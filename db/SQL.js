@@ -41,8 +41,13 @@ define([
 		'gt' : '>'
 	};
 	function convertExtra(object) {
-		// converts the 'extra' data on sql rows that can contain expando properties outside of the defined column
-		return object && object.__extra ? lang.mixin(object, JSON.parse(object.__extra)) : object;
+		for (var key in object) {
+			object[key] = JSON.parse(object[key]);
+		}
+		return object;
+	}
+	function prepareValue(value) {
+		return lang.isObject(value) ? JSON.stringify(value) : value;
 	}
 	return declare([Store, SimpleQuery], {
 		constructor: function (config) {
@@ -143,14 +148,14 @@ define([
 					actionsWithId.push(function(id) {
 						return all(value.map(function(value) {
 							return store.executeSql('INSERT INTO ' + store.table + '_repeating_' +
-								column + ' (value, id) VALUES (?, ?)', [value, id]);
+								column + ' (value, id) VALUES (?, ?)', [prepareValue(value), id]);
 						}));
 					});
 				}else{
 					// add to the columns and values for SQL statement
 					cols.push(column);
 					vals.push('?');
-					params.push(value);
+					params.push(prepareValue(value));
 				}
 			}
 
@@ -172,8 +177,7 @@ define([
 			// add the 'extra' expando data as well
 			cols.push('__extra');
 			vals.push('?');
-			params.push(JSON.stringify(extra));
-			
+			params.push(prepareValue(extra));
 			var idColumn = this.idProperty;
 			if (this.identifyGeneratedKey) {
 				params.idColumn = idColumn;
@@ -228,11 +232,11 @@ define([
 					store.executeSql('DELETE FROM ' + store.table + '_repeating_' + column + ' WHERE id=?', [id]);
 					for (var j = 0; j < value.length; j++) {
 						store.executeSql('INSERT INTO ' + store.table + '_repeating_' + column + ' (value, id) VALUES (?, ?)',
-							[value[j], id]);
+							[prepareValue(value[j]), id]);
 					}
 				}else{
 					cols.push(column + '=?');
-					params.push(value);
+					params.push(prepareValue(value));
 				}
 			}
 
@@ -252,7 +256,7 @@ define([
 				}
 			}
 			cols.push('__extra=?');
-			params.push(JSON.stringify(extra));
+			params.push(prepareValue(extra));
 			// create the SETs for the SQL
 			sql += cols.join(',') + ' WHERE ' + this.idProperty + '=?';
 			params.push(object[this.idProperty]);
@@ -304,7 +308,7 @@ define([
 			});
 			function sqlColumn(column) {
 				safeSqlName(column);
-				return table + '.' + escapeDot(column);	
+				return table + '.' + escapeDot(column);
 			}
 			function convertFilter(filter) {
 				var args = filter.args;
@@ -432,6 +436,6 @@ define([
 			}
 			return deferred.promise;
 		}
-		
+
 	});
 });
