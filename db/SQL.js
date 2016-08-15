@@ -40,9 +40,17 @@ define([
 		'lt' : '<',
 		'gt' : '>'
 	};
-	function convertExtra(object) {
+	function convertResult(object) {
 		for (var key in object) {
-			object[key] = JSON.parse(object[key]);
+			var parsed = object[key];
+			try {
+				parsed = JSON.parse(object[key]);
+			} catch (e) {
+			}
+			object[key] = parsed;
+		}
+		if (object.__extra) {
+			lang.mixin(object, object.__extra);
 		}
 		return object;
 	}
@@ -124,7 +132,7 @@ define([
 			// basic get() operation, query by id property
 			return when(this.executeSql('SELECT ' + this.selectColumns.join(',') + ' FROM ' +
 					this.table + ' WHERE ' + this.idProperty + '=?', [id]), function (result) {
-				return result.rows.length > 0 ? convertExtra(result.rows.item(0)) : undefined;
+				return result.rows.length > 0 ? convertResult(result.rows.item(0)) : undefined;
 			});
 		},
 		getIdentity: function (object) {
@@ -396,7 +404,7 @@ define([
 				// get the results back and do any conversions on it
 				var results = [];
 				for (var i = 0; i < sqlResults.rows.length; i++) {
-					results.push(convertExtra(sqlResults.rows.item(i)));
+					results.push(convertResult(sqlResults.rows.item(i)));
 				}
 				if (querier) {
 					results = querier(results);
